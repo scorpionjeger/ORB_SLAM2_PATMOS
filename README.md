@@ -275,3 +275,7 @@ mono_tum has been updated as a simple example of this functionality. An extra co
 I use boost_serialization library to serialize `Map`, `MapPoint`, `KeyFrame`,`KeyFrameDatabase`, `cv::Mat`, `DBoW2::BowVector`, `DBoW2::FeatureVector`. In brief, only the `ORBVector` isn't serialized.
 
 This feature is tested with boost 1.64 and it works fine mostly. There is still some occasional segmentfault to dig in.
+
+# 12. ORB_SLAM2 usage with PATMOS
+
+please see the attached word document that serves as a manual for this feature.
