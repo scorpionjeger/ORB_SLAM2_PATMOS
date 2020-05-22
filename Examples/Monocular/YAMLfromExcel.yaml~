@@ -1,0 +1,65 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters. Adjust them!
+#--------------------------------------------------------------------------------------------
+
+# Camera calibration and distortion parameters (OpenCV) 
+Camera.fx:742.0653
+Camera.fy:743.06735
+Camera.cx:652.27684
+Camera.cy:374.76149
+
+Camera.k1:-0.14203959
+Camera.k2:0.10102494
+Camera.p1:0.00697969
+Camera.p2:0.004319
+Camera.k3:-0.01520344
+
+# Camera frames per second 
+Camera.fps:240.0 
+
+# Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
+Camera.RGB:0
+
+#--------------------------------------------------------------------------------------------
+# ORB Parameters
+#--------------------------------------------------------------------------------------------
+
+# ORB Extractor: Number of features per image
+ORBextractor.nFeatures:12000
+
+# ORB Extractor: Scale factor between levels in the scale pyramid 	
+ORBextractor.scaleFactor:1.2
+
+# ORB Extractor: Number of levels in the scale pyramid	
+ORBextractor.nLevels:8
+
+# ORB Extractor: Fast threshold
+# Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
+# Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
+# You can lower these values if your images have low contrast
+ORBextractor.iniThFAST:20
+ORBextractor.minThFAST:7
+#--------------------------------------------------------------------------------------------
+# Viewer Parameters
+#--------------------------------------------------------------------------------------------
+Viewer.KeyFrameSize:0.1
+Viewer.KeyFrameLineWidth:1.0
+Viewer.GraphLineWidth:1.0
+Viewer.PointSize:2.0
+Viewer.CameraSize:0.15
+Viewer.CameraLineWidth:2.0
+Viewer.ViewpointX:0.0
+Viewer.ViewpointY:0.0
+Viewer.ViewpointZ:-4.0
+Viewer.ViewpointF:3000.0
+
+#--------------------------------------------------------------------------------------------
+# Map Parameters
+#--------------------------------------------------------------------------------------------
+Map.mapfile:map.bin
+
+
+
+

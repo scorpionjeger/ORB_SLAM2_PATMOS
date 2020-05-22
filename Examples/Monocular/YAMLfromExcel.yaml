@@ -1,0 +1,70 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters. Adjust them!
+#--------------------------------------------------------------------------------------------
+
+# Camera calibration and distortion parameters (OpenCV) 
+Camera.fx: 1838.864
+Camera.fy: 1835.793596
+Camera.cx: 720.7
+Camera.cy: 276.3
+
+Camera.k1: -0.285149
+Camera.k2: 0.184851
+Camera.p1: 0.004978
+Camera.p2: 0.001244
+Camera.k3: -0.529134
+
+# Camera frames per second 
+Camera.fps: 20.0 
+
+# Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
+Camera.RGB: 0
+
+#--------------------------------------------------------------------------------------------
+# ORB Parameters
+#--------------------------------------------------------------------------------------------
+
+# ORB Extractor: Number of features per image
+ORBextractor.nFeatures: 12000
+
+# ORB Extractor: Scale factor between levels in the scale pyramid 	
+ORBextractor.scaleFactor: 1.2
+
+# ORB Extractor: Number of levels in the scale pyramid	
+ORBextractor.nLevels: 8
+
+# ORB Extractor: Fast threshold
+# Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
+# Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
+# You can lower these values if your images have low contrast
+ORBextractor.iniThFAST: 20
+ORBextractor.minThFAST: 7
+#--------------------------------------------------------------------------------------------
+# Viewer Parameters
+#--------------------------------------------------------------------------------------------
+Viewer.KeyFrameSize: 0.1
+Viewer.KeyFrameLineWidth: 1
+Viewer.GraphLineWidth: 1
+Viewer.PointSize: 2
+Viewer.CameraSize: 0.15
+Viewer.CameraLineWidth: 2
+Viewer.ViewpointX: 0
+Viewer.ViewpointY: 0
+Viewer.ViewpointZ: -4
+Viewer.ViewpointF: 8000
+
+#--------------------------------------------------------------------------------------------
+# Map Parameters
+#--------------------------------------------------------------------------------------------
+Map.mapfile: /home/parrish/ORB_SLAM2/Data/map.bin
+Map.mapfileOut: /home/parrish/ORB_SLAM2/Data/map.bin
+Map.KFTfile: /home/parrish/ORB_SLAM2/Data/output.txt
+Map.FirstFrame: 2000
+Map.Camera1Placement: /home/parrish/ORB_SLAM2/Data/Metadata_C1.txt
+Map.Camera2Placement: /home/parrish/ORB_SLAM2/Data/Metadata_C2.txt
+
+
+
+

@@ -1,0 +1,610 @@
+/**
+* This file is part of ORB-SLAM2.
+*
+* Copyright (C) 2014-2016 Raúl Mur-Artal <raulmur at unizar dot es> (University of Zaragoza)
+* For more information see <https://github.com/raulmur/ORB_SLAM2>
+*
+* ORB-SLAM2 is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* ORB-SLAM2 is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#include "FrameDrawer.h"
+#include "Tracking.h"
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+#include<mutex>
+//#include<H5Cpp.h>
+
+
+
+namespace ORB_SLAM2
+{
+
+
+    double FrameDrawer::timeStampFollow1;
+    double FrameDrawer::timeStampFollow2;
+
+FrameDrawer::FrameDrawer(Map* pMap, bool bReuseMap):mpMap(pMap)
+{
+    if (bReuseMap)
+        mState=Tracking::LOST;
+    else
+        mState=Tracking::SYSTEM_NOT_READY;
+    mIm = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
+   fmRGB = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));//asa
+
+}
+
+
+
+cv::Mat FrameDrawer::DrawFrame()
+{
+    cv::Mat im;
+    cv::Mat helpmeim;
+    cv::Mat mmmK;
+    cv::Mat mmmDistCoef;
+
+    vector<cv::KeyPoint> vIniKeys; // Initialization: KeyPoints in reference frame
+    vector<int> vMatches; // Initialization: correspondeces with reference keypoints
+    vector<cv::KeyPoint> vCurrentKeys; // KeyPoints in current frame
+    vector<bool> vbVO, vbMap; // Tracked MapPoints in current frame
+    int state; // Tracking state
+    int NumPointShown=0;
+    vector<int> mCountVect;
+    double mtimestampHere;
+
+    bool RecordData=ORB_SLAM2::Viewer::getRecordData();
+    bool RecordCameraData=ORB_SLAM2::Viewer::getRecordCameraData();
+    bool ChangeCamera=ORB_SLAM2::Viewer::getChangeVideo();
+    bool timeStampFlag=true;
+    //cv::FileStorage fSettings2=ORB_SLAM2::Viewer::passfSettings();
+    string mapfileC1=ORB_SLAM2::Viewer::passfSettings1();
+    string mapfileC2=ORB_SLAM2::Viewer::passfSettings2();   
+
+    //double timestampHere; //qwq
+
+//////////////////////////////   My variables
+
+    vector<MapPoint*> mMapPointVec;//qwq
+    vector<float> mapFocus={1.0,1.0,.1};//qwq
+    //cv::Mat mapFocus={0.0,0.0,.3};//qwq
+    float FocalTestRadius=10000;//qwq
+    //
+    cv::Mat IntRGBVal=cv::Mat::eye(3,1,CV_32F);//qwq
+    int PixilAve=3;//qwq
+    bool UseColor=false;//qwq
+
+
+
+    //Copy variables within scoped mutex
+    {
+        unique_lock<mutex> lock(mMutex);
+        state=mState;
+        if(mState==Tracking::SYSTEM_NOT_READY)
+            mState=Tracking::NO_IMAGES_YET;
+
+        //mIm.copyTo(im);
+        fmRGB.copyTo(im);
+        fmRGB.copyTo(helpmeim);///qwq
+	mmK.copyTo(mmmK);//qwq
+	mmDistCoef.copyTo(mmmDistCoef);//qwq
+    	mCountVect=CountVect;//qwq
+	mMapPointVec=MapPointVec;//qwq
+	mtimestampHere=timestampHere;//qwq
+
+
+        if(mState==Tracking::NOT_INITIALIZED)
+        {
+            vCurrentKeys = mvCurrentKeys;
+            vIniKeys = mvIniKeys;
+            vMatches = mvIniMatches;
+        }
+        else if(mState==Tracking::OK)
+        {
+            vCurrentKeys = mvCurrentKeys;
+            vbVO = mvbVO;
+            vbMap = mvbMap;
+        }
+        else if(mState==Tracking::LOST)
+        {
+            vCurrentKeys = mvCurrentKeys;
+        }
+    } // destroy scoped mutex -> release mutex
+
+	
+
+
+
+///////////////////////////////////////////////////qwq
+    
+    RecordData=ORB_SLAM2::Viewer::getRecordData();
+    RecordCameraData=ORB_SLAM2::Viewer::getRecordCameraData();
+    //cout<<"record data"<<RecordData<<endl;
+
+    WriteDataFile=RecordData;
+    WriteDataFile2=!RecordCameraData;
+    //WriteDataFile2=RecordCameraData;
+
+//WriteDataFile2=false;
+   //cout<<"record camera data"<<WriteDataFile2<<endl;
+
+
+    if(WriteDataFile or WriteDataFile2)
+	{
+
+    if(!myfile.is_open()) 
+{
+        if(!ChangeCamera)
+{
+     	//myfile.open("Data/example.txt");
+	//myfile.open("Data/"+mapfileC1);
+	myfile.open(mapfileC1);
+	cout<<"Data/"+mapfileC1<<" this is the file"<<endl;
+}
+	else
+{
+	//myfile.open("Data/"+mapfileC2);
+	myfile.open(mapfileC2);
+}
+     //string myFileheader="Time;";
+		myfile<<"Time Stamp"<<"|";
+		myfile<<"i"<<"|"<<"Max num of points or n"<<"|"<<"observations"<<"|"<<"mnId"<<"|"<<"nNextId"<<"|";
+		myfile<<"World vector x"<<"|"<<"World vector y"<<"|"<<"World vector z"<<"|";
+		myfile<<"Pixel x"<<"|"<<"Pixel y"<<"|";
+		myfile<<"Blue"<<"|"<<"Green"<<"|"<<"Red"<<"|";	
+
+
+///////////////////new		
+		myfile<<"NormalVector x"<<"|"<<"NormalVector y"<<"|"<<"NormalVector z";
+		
+		myfile<<"|"<<"map point ref KF";
+
+		myfile<<"|"<<"Last Frame Seen"<<"|";
+
+
+        	myfile<<"TwcClone.m[0]"<<"|"<<"TwcClone.m[1]"<<"|"<<"TwcClone.m[2]"<<"|"<<"TwcClone.m[4]"<<"|"<<"TwcClone.m[5]"<<"|"<<"TwcClone.m[6]"<<"|"<<"TwcClone.m[8]"<<"|"<<"TwcClone.m[9]"<<"|"<<"TwcClone.m[10]"<<"|"<<"TwcClone.m[12]"<<"|"<<"TwcClone.m[13]"<<"|"<<"TwcClone.m[14]";
+
+
+
+		myfile<<endl;
+
+
+
+
+     myfile<<"fx"<<"|"<<mmmK.at<float>(0,0)<<"|";
+     myfile<<"fy"<<"|"<<mmmK.at<float>(1,1)<<"|";
+     myfile<<"cx"<<"|"<<mmmK.at<float>(0,2)<<"|";
+     myfile<<"cy"<<"|"<<mmmK.at<float>(1,2)<<"|";
+     myfile<<"k1"<<"|"<<mmmDistCoef.at<float>(0)<<"|";
+     myfile<<"k2"<<"|"<<mmmDistCoef.at<float>(1)<<"|";
+     myfile<<"p1"<<"|"<<mmmDistCoef.at<float>(2)<<"|";
+     myfile<<"p2"<<"|"<<mmmDistCoef.at<float>(3)<<"|";
+     myfile<<"k3"<<"|"<<mmmDistCoef.at<float>(4)<<"|"<<endl;
+
+
+
+
+   
+
+}///////////////    if(!myfile.is_open())
+	}  //////////   if(WriteDataFile)
+
+///////////////////////////////////////////qwq
+
+
+
+    if(im.channels()<3) //this should be always true
+        cvtColor(im,im,CV_GRAY2BGR);
+
+    //Draw
+    if(state==Tracking::NOT_INITIALIZED) //INITIALIZING
+    {
+        for(unsigned int i=0; i<vMatches.size(); i++)
+        {
+            if(vMatches[i]>=0)
+            {
+                cv::line(im,vIniKeys[i].pt,vCurrentKeys[vMatches[i]].pt,
+                        cv::Scalar(0,255,0));
+            }
+        }        
+    }
+    else if(state==Tracking::OK) //TRACKING
+    {
+        mnTracked=0;
+        mnTrackedVO=0;
+        const float r = 5;
+        const int n = vCurrentKeys.size();
+	NumPointShown=0;
+    	const int Nm = pTrackerCrayCray->mCurrentFrame.mvKeys.size();//qwq
+	//cout<< n<<"  "<<Nm<<"n vs Nm"<<endl;
+	//mmvCurrentKeys=pTracker->mCurrentFrame.mvKeys;
+        //timestampHere=pTracker->timestampTr;
+        timestampHere=pTrackerCrayCray->timestampTr;
+
+    	//cout<<timestampHere<<" Timestamp  rgb  "<<(TwcClone.m[0])<<endl;
+
+	if(abs(timestampHere-FrameDrawer::timeStampFollow1)<0.0000001){
+
+	
+        timeStampFlag=false;
+}
+
+	else{
+
+	timeStampFlag=true;
+}
+
+	FrameDrawer::timeStampFollow1=timestampHere;
+
+
+
+
+
+
+
+	///////////////blanks
+
+    if((WriteDataFile or WriteDataFile2) and timeStampFlag)
+	{
+	myfile<<timestampHere<<"||||||||||||||||||||";
+
+
+	///////////////camera poses and position
+        myfile<<(TwcClone.m[0])<<"|"<<(TwcClone.m[1])<<"|"<<(TwcClone.m[2])<<"|"<<(TwcClone.m[4])<<"|"<<(TwcClone.m[5])<<"|"<<(TwcClone.m[6])<<"|"<<(TwcClone.m[8])<<"|"<<(TwcClone.m[9])<<"|"<<(TwcClone.m[10])<<"|"<<(TwcClone.m[12])<<"|"<<(TwcClone.m[13])<<"|"<<(TwcClone.m[14])<<endl;
+
+	}/////////////    if(WriteDataFile)
+
+
+        for(int i=0;i<n;i++)
+        {
+            if(vbVO[i] || vbMap[i])
+            {
+                cv::Point2f pt1,pt2;
+                pt1.x=vCurrentKeys[i].pt.x-r;
+                pt1.y=vCurrentKeys[i].pt.y-r;
+                pt2.x=vCurrentKeys[i].pt.x+r;
+                pt2.y=vCurrentKeys[i].pt.y+r;
+		NumPointShown++;////qwq
+		
+
+	/////////////////////////qwq
+
+
+
+		/////////setting RGB values to mappoint
+		cv::Vec3b brgPixel=helpmeim.at<cv::Vec3b>((int)vCurrentKeys[i].pt.x,(int)vCurrentKeys[i].pt.y);
+
+		if(UseColor)
+{
+
+		if((float)brgPixel[0]/256.0==0.0 && (float)brgPixel[1]/256.0==0.0 && (float)brgPixel[2]/256.0==0.0)
+{
+		IntRGBVal.at<float>(0,0)=1.0;
+		IntRGBVal.at<float>(1,0)=0.0;
+		IntRGBVal.at<float>(2,0)=1.0;
+}
+
+		else
+{
+
+
+		if(1==2)
+{
+		IntRGBVal.at<float>(0,0)=(float)brgPixel[2]/256.0;
+		IntRGBVal.at<float>(1,0)=(float)brgPixel[1]/256.0;
+		IntRGBVal.at<float>(2,0)=(float)brgPixel[0]/256.0;
+		mMapPointVec[i]->SetRgbVal(IntRGBVal);
+
+}
+		else
+
+{
+
+
+		IntRGBVal.at<float>(0,0)=0;
+		IntRGBVal.at<float>(1,0)=0;
+		IntRGBVal.at<float>(2,0)=0;
+
+		for(int ii=(int)vCurrentKeys[i].pt.x-PixilAve;ii<=(int)vCurrentKeys[i].pt.x+PixilAve;ii+=1)
+{
+			for(int jj=(int)vCurrentKeys[i].pt.y-PixilAve;jj<=(int)vCurrentKeys[i].pt.y+PixilAve;jj+=1)
+{
+
+				brgPixel=helpmeim.at<cv::Vec3b>(ii,jj);
+
+				IntRGBVal.at<float>(0,0)+=(float)brgPixel[2]/256.0;
+				IntRGBVal.at<float>(1,0)+=(float)brgPixel[1]/256.0;
+				IntRGBVal.at<float>(2,0)+=(float)brgPixel[0]/256.0;
+
+
+}//ii
+}//jj
+
+
+
+		IntRGBVal.at<float>(0,0)=IntRGBVal.at<float>(0,0)/((PixilAve*2+1)*(PixilAve*2+1));
+		IntRGBVal.at<float>(1,0)=IntRGBVal.at<float>(1,0)/((PixilAve*2+1)*(PixilAve*2+1));
+		IntRGBVal.at<float>(2,0)=IntRGBVal.at<float>(2,0)/((PixilAve*2+1)*(PixilAve*2+1));
+		mMapPointVec[i]->SetRgbVal(IntRGBVal);
+
+}////if on average
+
+}/// not black
+
+}///UseColor
+
+//		mMapPointVec[i]->SetRgbVal(IntRGBVal);
+
+
+
+
+
+		//cout<<"RGB ? "<<(float)brgPixel[0]/256.0<<" "<<(float)brgPixel[1]/256.0<<" "<<(float)brgPixel[2]/256.0<<endl;
+
+   //cout<<"record camera data"<<WriteDataFile2<<endl;
+	    if(WriteDataFile2 and timeStampFlag)
+		{
+
+   //cout<<"record camera data grrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"<<WriteDataFile2<<endl;
+
+		cv::Mat pos = mMapPointVec[i]->GetWorldPos();
+		cv::Mat normv = mMapPointVec[i]->GetNormal();
+
+	    //if(sqrt(pow(pos.at<float>(0)-mapFocus[0],2)+pow(pos.at<float>(1)-mapFocus[1],2) + pow(pos.at<float>(2)-mapFocus[2],2))<FocalTestRadius)
+	    if(sqrt(pow(pos.at<float>(0)-mapFocus[0],2)+pow(pos.at<float>(1)-mapFocus[1],2) + pow(pos.at<float>(2)-mapFocus[2],2))<FocalTestRadius)
+	    //if(1==1)
+	    //if(sqrt(pos.dot(mapFocus.t()))<FocalTestRadius)
+		{
+		//if(i<Nm)
+		//{
+
+
+		//MapPoint* pMPCray = pTrackerCrayCray->mCurrentFrame.mvpMapPoints[i];
+
+
+
+		//time stamp
+		myfile<<"Time Stamp"<<"|";
+		//index's
+		//myfile<<i<<"|"<<n<<"|"<<pMPCray->Observations()<<"|"<<pMPCray->mnId<<"|"<<pMPCray->nNextId<<"|";
+
+ 		myfile<<i<<"|"<<n<<"|"<<mMapPointVec[i]->Observations()<<"|"<<mMapPointVec[i]->mnId<<"|"<<mMapPointVec[i]->nNextId<<"|";
+		
+
+		
+		//world view
+
+		
+
+		myfile<<pos.at<float>(0)<<"|"<<pos.at<float>(1)<<"|"<<pos.at<float>(2)<<"|";
+
+		//}
+
+
+		// frame pixel value
+		myfile<<vCurrentKeys[i].pt.x<<"|"<<(int)vCurrentKeys[i].pt.y<<"|";
+		//RGB value
+
+
+
+		myfile<<(int)brgPixel[0]<<"|"<<(int)brgPixel[1]<<"|"<<(int)brgPixel[2]<<"|";	
+
+
+		//myfile<<"NormalVector x"<<"|"<<"NormalVector y"<<"|"<<"NormalVector z";
+		myfile<<normv.at<float>(0)<<"|"<<normv.at<float>(1)<<"|"<<normv.at<float>(2);
+		
+		myfile<<"|"<<mMapPointVec[i]->GetReferenceKeyFrame()->mnId;
+
+		myfile<<"|"<< mMapPointVec[i]->mnLastFrameSeen<<"|";
+
+
+
+		// end line
+
+		myfile<<endl;
+
+
+//        cv::Mat pos = vpMPs[i]->GetWorldPos();
+//        glVertex3f(pos.at<float>(0),pos.at<float>(1),pos.at<float>(2));
+//	myfile<<i<<";"<<pos.at<float>(0)<<";"<<pos.at<float>(1)<<";"<<pos.at<float>(2)<<";"<<vpMPs.size()<<";"<<vpMPs[i]->Observations()<<";"<<vpMPs[i]->mnId<<";"<<vpMPs[i]->nNextId<<endl;
+
+
+
+
+
+
+
+		//cout<<(int)im.at<unsigned char>((int)vCurrentKeys[i].pt.x,(int)vCurrentKeys[i].pt.y)<<" im point " <<(int)vCurrentKeys[i].pt.x<<" "<<(int)vCurrentKeys[i].pt.y<<endl;
+
+//asa
+	//cout<<(int)mRGB.at<unsigned char>((int)vCurrentKeys[i].pt.x,(int)vCurrentKeys[i].pt.y)<<" im point " <<(int)vCurrentKeys[i].pt.x<<" "<<(int)vCurrentKeys[i].pt.y<<endl;
+//
+		}// selecting for small radius qwq
+		}// if the file is writing qwq
+		
+		//timestampHere=pTrackerCrayCray->timestampTr;
+
+    		//cout<<timestampHere<<" Timestamp 2  rgb  "<<(TwcClone.m[0])<<endl;
+
+
+                // This is a match to a MapPoint in the map
+                if(vbMap[i])
+                {
+                    cv::rectangle(im,pt1,pt2,cv::Scalar(0,255,0));
+                    cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(0,255,0),-1);
+                    mnTracked++;
+                }
+                else // This is match to a "visual odometry" MapPoint created in the last frame
+                {
+                    cv::rectangle(im,pt1,pt2,cv::Scalar(255,0,0));
+                    cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(255,0,0),-1);
+                    mnTrackedVO++;
+                }
+            }
+        }
+
+
+
+
+    }
+    //cout<<"N="<<mvCurrentKeys.size()<<" Num points="<<NumPointShown<<endl;////////////////// qwq
+
+
+
+    cv::Mat imWithInfo;
+    DrawTextInfo(im,state, imWithInfo);
+
+    return imWithInfo;
+}
+
+
+void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
+{
+    stringstream s;
+    if(nState==Tracking::NO_IMAGES_YET)
+        s << " WAITING FOR IMAGES";
+    else if(nState==Tracking::NOT_INITIALIZED)
+        s << " TRYING TO INITIALIZE ";
+    else if(nState==Tracking::OK)
+    {
+        if(!mbOnlyTracking)
+            s << "SLAM MODE |  ";
+        else
+            s << "LOCALIZATION | ";
+        int nKFs = mpMap->KeyFramesInMap();
+        int nMPs = mpMap->MapPointsInMap();
+        s << "KFs: " << nKFs << ", MPs: " << nMPs << ", Matches: " << mnTracked;
+        if(mnTrackedVO>0)
+            s << ", + VO matches: " << mnTrackedVO;
+    }
+    else if(nState==Tracking::LOST)
+    {
+        s << " TRACK LOST. TRYING TO RELOCALIZE ";
+    }
+    else if(nState==Tracking::SYSTEM_NOT_READY)
+    {
+        s << " LOADING ORB VOCABULARY. PLEASE WAIT...";
+    }
+
+    int baseline=0;
+    cv::Size textSize = cv::getTextSize(s.str(),cv::FONT_HERSHEY_PLAIN,1,1,&baseline);
+
+    imText = cv::Mat(im.rows+textSize.height+10,im.cols,im.type());
+    im.copyTo(imText.rowRange(0,im.rows).colRange(0,im.cols));
+    imText.rowRange(im.rows,imText.rows) = cv::Mat::zeros(textSize.height+10,im.cols,im.type());
+    cv::putText(imText,s.str(),cv::Point(5,imText.rows-5),cv::FONT_HERSHEY_PLAIN,1,cv::Scalar(255,255,255),1,8);
+
+}
+
+void FrameDrawer::Update(Tracking *pTracker)
+{
+    unique_lock<mutex> lock(mMutex);
+    pTracker->mImGray.copyTo(mIm);
+
+    pTracker->mRGB.copyTo(fmRGB); 
+    //fmRGB=pTracker->mRGB;///qwq  
+    const double timestampHere=pTracker->timestampTr;//qwq
+    //cout<<"The TimeStamp in Update "<<timestampHere<<"      "<<(TwcClone.m[0])<<endl;//qwq
+    pTrackerCrayCray=pTracker;
+
+    mvCurrentKeys=pTracker->mCurrentFrame.mvKeys;
+    N = mvCurrentKeys.size();
+    mvbVO = vector<bool>(N,false);
+    mvbMap = vector<bool>(N,false);
+    MapPointVec=vector<MapPoint*>(N,NULL);/// qwq
+
+    CountVect=vector<int>(N,0);///qwq
+    
+
+    mmDistCoef=pTracker->mmDistCoef;//qwq
+
+    mmK=pTracker->mmK;//qwq
+
+  
+
+
+    mbOnlyTracking = pTracker->mbOnlyTracking;
+    //cout<<mvCurrentKeys.size()<<endl;////////////////// qwq
+
+
+
+////////////////////////////////////qwq
+
+
+
+
+
+
+
+//    for(int i=0;i<N;i++)
+//    {
+//	cout <<mvCurrentKeys[i].pt<<endl;
+//    }
+    
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////qwq
+
+
+
+
+
+    if(pTracker->mLastProcessedState==Tracking::NOT_INITIALIZED)
+    {
+        mvIniKeys=pTracker->mInitialFrame.mvKeys;
+        mvIniMatches=pTracker->mvIniMatches;
+    }
+    else if(pTracker->mLastProcessedState==Tracking::OK)
+    {
+        for(int i=0;i<N;i++)
+        {
+            MapPoint* pMP = pTracker->mCurrentFrame.mvpMapPoints[i];
+	    MapPointVec[i]=pMP;
+
+            if(pMP)
+            {
+		//cout<<"pMP->Observations()"<<pMP->GetWorldPos()<<endl;
+                if(!pTracker->mCurrentFrame.mvbOutlier[i])
+                {
+                    if(pMP->Observations()>0)
+			{
+                        mvbMap[i]=true;
+			CountVect[i]=pMP->mnId;
+			}
+                    else
+                        mvbVO[i]=true;
+                }
+            }
+        }
+    }
+    mState=static_cast<int>(pTracker->mLastProcessedState);
+}
+
+
+
+void FrameDrawer::MessWithMap(){
+    
+    cout<<"you have come to mess with the Map"<<endl;
+
+}
+} //namespace ORB_SLAM
